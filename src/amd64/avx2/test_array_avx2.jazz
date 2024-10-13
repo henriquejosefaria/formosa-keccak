@@ -90,16 +90,14 @@ export fn test_shake_array_avx2
   return stm, outbuf;
 }
 
-/*
 export fn test_keccakF_avx2
-( reg mut ptr u256[7] sta
+( reg mut ptr u256[7] stm
 ) -> reg ptr u256[7]
 {
   reg u256[7] st;
   inline int i;
   st = __state_init_avx2();
   st = _keccakf1600_avx2(st);
-  for i = 0 to 7 { sta[i] = st[i]; }
-  return sta;
+  for i = 0 to 7 { stm[i] = st[i]; }
+  return stm;
 }
-*/

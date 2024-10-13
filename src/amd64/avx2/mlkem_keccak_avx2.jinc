@@ -1,0 +1,556 @@
+require "keccak1600_imem_avx2.jinc"
+
+namespace A1 {
+  param int ASIZE = 1;
+  require "keccak1600_array_avx2_ASIZE.jinc"
+}
+
+namespace A2 {
+  param int ASIZE = 2;
+  require "keccak1600_array_avx2_ASIZE.jinc"
+}
+
+namespace A32 {
+  param int ASIZE = 32;
+  require "keccak1600_array_avx2_ASIZE.jinc"
+}
+
+namespace A64 {
+  param int ASIZE = 64;
+  require "keccak1600_array_avx2_ASIZE.jinc"
+}
+
+namespace A128 {
+  param int ASIZE = 128;
+  require "keccak1600_array_avx2_ASIZE.jinc"
+}
+
+
+fn _sha3_256A_A32
+( #spill_to_mmx reg mut ptr u8[32] out
+, reg const ptr u8[32] in
+) -> reg ptr u8[32]
+{ reg u256[7] st;
+  reg u64 offset;
+  st = __state_init_avx2();
+  offset = 0;
+  st, _ = A32::__absorb_array_avx2(st, in, offset, 32, R136, SHA3);
+  offset = 0;
+  out, _ = A32::__squeeze_array_avx2(out, offset, 32, st, R136);
+  return out;
+}
+
+fn _sha3_256A_M1184
+( #spill_to_mmx reg mut ptr u8[32] out
+, #spill_to_mmx reg u64 in
+) -> reg ptr u8[32]
+{ reg u256[7] st;
+  reg u64 offset;
+  st = __state_init_avx2();
+  st, _ = __absorb_imem_avx2(st, in, 1184, R136, SHA3);
+  offset = 0;
+  out, _ = A32::__squeeze_array_avx2(out, offset, 32, st, R136);
+  return out;
+}
+
+fn _sha3_512A_A32
+( #spill_to_mmx reg mut ptr u8[64] out
+, reg const ptr u8[32] in
+) -> reg ptr u8[64]
+{ reg u256[7] st;
+  reg u64 offset;
+  st = __state_init_avx2();
+  offset = 0;
+  st, _ = A32::__absorb_array_avx2(st, in, offset, 32, R72, SHA3);
+  offset = 0;
+  out, _ = A64::__squeeze_array_avx2(out, offset, 64, st, R72);
+  return out;
+}
+
+fn _sha3_512A_A64
+( reg mut ptr u8[64] out
+, reg const ptr u8[64] in
+) -> reg ptr u8[64]
+{ reg u256[7] st;
+  reg u64 offset;
+  st = __state_init_avx2();
+  offset = 0;
+  st, _ = A64::__absorb_array_avx2(st, in, offset, 64, R72, SHA3);
+  offset = 0;
+  out, _ = A64::__squeeze_array_avx2(out, offset, 64, st, R72);
+  return out;
+}
+
+fn _shake256_M32__M32_M1088
+( reg u64 out
+, reg u64 in0 in1 // 32+MLKEM_INDCPA_CIPHERTEXTBYTES
+)
+{ reg u256[7] st;
+  stack u64[25] pst_s;
+  reg ptr u64[25] pst;
+  st = __state_init_avx2();
+  pst = pst_s;
+  pst = __pstate_init_avx2(pst);
+  pst, _, st, _ = __pabsorb_imem_avx2(pst, 0, st, in0, 32, R136, UNFINISHED);
+  pst, _, st, _ = __pabsorb_imem_avx2(pst, 32, st, in1, 1088, R136, SHAKE);
+  _, _ = __squeeze_imem_avx2(out, 32, st, R136);
+}
+
+fn _shake256_A128__A32_A1
+( reg mut ptr u8[128] out
+, reg const ptr u8[32] seed
+, reg const ptr u8[1] nonce
+) -> reg ptr u8[128]
+{ reg u256[7] st;
+  stack u64[25] pst_s;
+  reg ptr u64[25] pst;
+  reg u64 offset;
+  st = __state_init_avx2();
+  pst_s = pst;
+  pst = __pstate_init_avx2(pst);
+  offset = 0;
+  pst, _, st, _ = A32::__pabsorb_array_avx2(pst, 0, st, seed, offset, 32, R136, UNFINISHED);
+  offset = 0;
+  pst, _, st, _ = A1::__pabsorb_array_avx2(pst, 32, st, nonce, offset, 1, R136, SHAKE);
+  offset = 0;
+  out, _ = A128::__squeeze_array_avx2(out, offset, 32, st, R136);
+
+  return out;
+}
+
+/*
+fn _shake256_x4_128_32_1
+( reg mut ptr u8[128] out0, out1, out2, out3,
+, reg const ptr u8[32] in1
+, reg u64 nonce
+) -> reg ptr u8[128], reg ptr u8[128], reg ptr u8[128], reg ptr u8[128], reg u64
+{ stack u256[25] stx4;
+  stack u64 trail0, trail1, trail2, trail3;
+  stavx2 = stavx2_init();
+  stx4 = ABSORB_X4_R72_A32::pabsorb_x4_bcast(stx4, 0, in1, 0, 32);
+  trail0 = SHAKE_trailbyte;
+  trail0 <<= 8;
+  trail1 = trail0;
+  trail2 = trail0;
+  trail3 = trail1;
+  trail0 |= nonce;
+  nonce += 1;
+  trail1 |= nonce;
+  nonce += 1;
+  trail2 |= nonce;
+  nonce += 1;
+  trail3 |= nonce;
+  nonce += 1;
+  st = ABSORB_X4_R72::pabsorb_x4_finish(st, 4, trail0, trail1, trail2, trail3);
+  out0, out1, out2, out3 = SQUEEZE_A128::psqueeze(out, 0, 32, stx4);
+
+  return out0, out1, out2, out3, nonce;
+}
+*/
+
+/*
+fn _shake256_32_32_1088
+( #spill_to_mmx reg mut ptr u8[32] out
+, reg const ptr u8[32] in0
+, reg const ptr u8[1088] in1
+) -> reg ptr u64[32]
+{ reg u256[7] stavx2;
+  reg u256 t256;
+  stack u64[25] pst;
+  reg u64 trail, offset, t64;
+
+  stavx2 = state_init_avx2();
+  pst = pstate_init_avx2(pst);
+  t256 = in0.[u256 0];
+  pst[u256 0] = t256;
+  offset = 0;
+  pst = ABSORB_AVX2_R72::pabsorb_avx2(pst, 4, in1, offset, (72-32)/8);
+  offset += 40;
+  stavx2 = ABSORB_AVX2_R72::addpstate_avx2(stavx2, pst);
+  stavx2 = keccakf1600_avx2(stavx2);
+  while (offset <= LEN-RATE) { // 14 iters;
+    stavx2 = ABSORB_AVX2_R72_A1088::absorb_block(stavx2, in1, offset);
+    stavx2 = keccakf1600_avx2(stavx2);
+    offset += RATE;    
+  }
+  pst = pstate_init_avx2(pst);
+  at = 0;
+  while (offset <= 1088-8) {
+    t64 = in1.[offset];
+    offset += 8;
+    pst[(int) at] = t64;
+    at += 1;
+  }
+  pst[(int) at] = SHAKE_trailbyte;
+  pst[u8 71] ^= 0x80;
+  stavx2 = ABSORB_AVX2_R72::addpstate_avx2(stavx2, pst);
+  stavx2 = keccakf1600_avx2(stavx2);
+
+  out = SQUEEZE_AVX2_R72_A32::squeeze_avx2(out, stavx2);
+
+  return out;
+}
+
+*/
+
+
+/*
+param int ASIZE = 1001;
+
+inline fn aread_subu64
+( reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+) -> reg u64 /* w */, reg u64 /* offset */
+{
+  reg u64 w, t16, t8;
+  inline int len;
+  len = LEN;
+  if (8 <= len) {
+    w = buf.[u64 offset];
+    offset += 8;
+  } else {
+    if (4 <= len) {
+      w = buf.[u32 offset];
+      offset += 4;
+      len -= 4;
+    } else {
+      w = 0;
+    }
+    if (2 <= len) {
+      t16 = buf.[u16 offset];
+      offset += 2;
+      len -= 2;
+    } else {
+      t16 = 0;
+    }
+    if (1 <= len) {
+      t8 = buf.[(int) offset];
+      offset += 1;
+      t8 <<= 8*(2*(LEN % 2));
+      t16 |= t8;
+    }
+    t16 <<= 8*(4*(LEN % 4));
+    w |= t16;
+  }
+  return w, offset; 
+}
+
+inline fn aread_subu128
+( reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+) -> reg u128 /* w */, reg u64 /* offset */
+{
+  reg u128 w;
+  reg u64 t64;
+  inline int len;
+  len = LEN;
+  if (16 <= len) {
+    w = buf.[u128 (int) offset];
+    offset += 16;
+  } else {
+    if (8 <= len) {
+      w = #VMOV(buf.[u64 offset]);
+      offset += 8;
+      len -= 8
+      t64, offset = aread_subu64(buf, offset, len);
+      w = #VPINSR_2u64(w, t64, 1); 
+    } else {
+      t64, offset = aread_subu64(buf, offset, len);
+      w = (128u) t64;
+    }
+  }
+  return w, offset;
+}
+
+inline fn aread_subu256
+( reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+) -> reg u256 /* w */, reg u64 /* offset */
+{
+  reg u256 w;
+  reg u128 t128_0, t128_1;
+  inline int len;
+  len = LEN;
+  if (32 <= len) {
+    w = buf.[u256 (int) offset];
+    offset += 32;
+  } else {
+    if (16 <= len) {
+      t128_0 = buf.[u128 (int) offset];
+      offset += 16;
+      len -= 16;
+      t128_1, offset = aread_subu128(buf, offset, len);
+      w = (2u128)[t128_1, t128_0];
+    } else {
+      t128_0, offset = aread_subu128(buf, offset, len);
+      w = (256u) t128_0;
+    }
+  }
+  return w, offset;
+}
+
+
+inline fn awrite_subu64
+( reg mut ptr u8[ASIZE] buf
+, reg u64 offset
+, reg u64 w
+, inline int LEN
+) -> reg ptr u64[ASIZE] /* buf */, reg u64 /* offset */
+{
+  reg u64 w, t32, t16, t8;
+  inline int len;
+  len = LEN;
+  if (8 <= len) {
+    buf.[u64 offset] = w;
+    offset += 8;
+  } else {
+    if (4 <= len) {
+      buf.[u32 offset] = (32u) w;
+      offset += 4;
+      len -= 4;
+    }
+    if (2 <= len) {
+      buf.[u16 offset] = (16u) w;
+      offset += 2;
+      len -= 2;
+    }
+    if (1 <= len) {
+      buf.[(int) offset] = (8u) w;
+      offset += 1;
+    }
+  }
+  return buf, offset; 
+}
+
+inline fn awrite_subu128
+( reg mut ptr u8[ASIZE] buf
+, reg u64 offset
+, reg u128 w
+, inline int LEN
+) -> reg ptr u8[ASIZE] /* buf */, reg u64 /* offset */
+{
+  inline int len;
+  len = LEN;
+  if (16 <= len) {
+    buf.[u128 (int) offset] = w;
+    offset += 16;
+  } else {
+    if (8 <= len) {
+      buf.[u64 offset] = #MOVV(w);
+      offset += 8;
+      len -= 8
+      w = #VPUNPCKH_2u64(w, w);
+    }
+    t64 = (64u) w;
+    buf, offset = awrite_subu64(buf, offset, t64, len);
+  }
+  return buf, offset;
+}
+
+inline fn awrite_subu256
+( reg mut ptr u8[ASIZE] buf
+, reg u64 offset
+, reg u256 w
+, inline int LEN
+) -> reg ptr u8[ASIZE] /* buf */, reg u64 /* offset */
+{
+  reg u128 t128;
+  inline int len;
+  len = LEN;
+  if (32 <= len) {
+    buf.[u256 (int) offset] = w;
+    offset += 32;
+  } else {
+    if (16 <= len) {
+      buf.[u128 offset] = (128u) w;
+      offset += 16;
+      len -= 16
+      t128 = #VEXTRACTI128(w, 1);
+    } else {
+      t128 = (128u) w;
+    }
+    buf, offset = awrite_subu128(buf, offset, t128, len);
+  }
+  return buf, offset;
+}
+
+
+inline fn pabsorb_array
+( reg mut ptr u64[25] st
+, inline int AT
+, reg u64 leftovers
+, inline int LO
+, reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+) -> reg ptr u64[25] /* st */
+   , inline int /* AT */
+   , reg u64 /* leftovers */
+   , inline int /* LO */
+   , reg u64 /* offset */
+{
+  if ( 0 < LO ) { // process first word...
+    if ( LO + LEN < 8) { // ...not enough to fill a word (just update "lo")
+      t64 = aread_subu64(buf, offset, LEN);
+      t64 <<= 8*LO;
+      lo |= t64;
+      LO += LEN;
+      LEN = 0;
+    } else { // process first word
+      if ( 8 <= LEN ) {
+        t64 = buf.[u64 offset];
+      } else {
+        t64 = aread_subu64(buf, offset, 8-LO);
+      }
+      LEN -= 8-LO;
+      t64 <<= 8*(8-LO);
+      lo |= t64;
+      offset += (8-LO);
+      LO = 0;
+      st.[AT] ^= lo;
+      AT += 1;
+      if ( AT==25 ) {
+        st = keccakf1600(st);
+        AT = 0;
+      }
+    }
+  }
+  // process remaining words of first block
+  if ( 0 < AT && RATE8 <= 8*AT + LEN ) {
+    st, _, offset = pabsorb_ilen( st, AT, buf, offset, RATE8-8*AT);
+    LEN -= RATE8-8*AT;
+    st = keccakf1600(st);
+  }
+  // process remaining full blocks
+  i = 0;
+  while ( i < LEN / RATE8 ) {
+    AT = 0;
+    st, _, offset = pabsorb_ilen( st, AT, buf, offset, RATE8);
+    st = keccakf1600(st);
+  }
+  // last (possibly incomplete block)
+  LEN = LEN % RATE8;
+  AT = 0;
+  st, AT, offset = pabsorb_ilen( st, AT, buf, offset, 8*(LEN/8));
+  LEN = LEN % 8;
+  if ( 0 < LEN ) {
+    lo, offset = aread_subu64( buf, offset, LEN);
+  }
+
+  return st, AT, lo, LEN, offset;
+}
+
+
+
+inline fn pstate_reset_avx2(reg mut ptr u64[25] pst, inline int RATE8) -> reg ptr u64[25] {
+  inline int i;
+  reg u256 t256;
+  reg u64 t64;
+  t256 = #set0_256();
+  for i = 0 to (RATE8/32)+1 {
+    pst[u256 i] = t256;
+  }
+  t64 = #set0_64();
+  for i = 4*((RATE8 / 32)+1) to RATE8/8 {
+    pst[i] = t64;    
+  }
+  return pst;
+}
+
+inline fn pstate_init_avx2(reg mut ptr u64[25] pst) -> reg ptr u64[25] {
+  pst = pstate_reset_avx2(pst, 200);
+  return pst;
+}
+
+param int ASIZE = 1001;
+
+/**
+  requires AT*8 + LEN <= RATE8
+  requires offset + LEN <= ASIZE
+*/
+inline fn pabsorb_avx2
+( reg mut ptr u64[25] pst
+, reg u64 at
+, reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+) -> reg ptr u64[25] /* pst */, reg u64 /* at */, reg u64 /* offset */
+{
+  reg u64 i;
+  i = 0;
+  while (i < LEN/8 ) {
+    pst[(int) at+i] = buf.[u64 offset + i*8];
+    i += 1;
+  }
+  offset += 8*(LEN/8);
+  return pst, offset;
+}
+
+/**
+  requires offset + RATE8 <= ASIZE
+*/
+inline fn pabsorb_block_avx2
+( reg u256[7] state
+, reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int RATE8
+) -> reg u256[7] /* state */, reg u64 /* offset */
+{ // costumize for each rate!!!
+  state, offset = addblock_avx2(state, buf, offset, RATE8);
+  state = keccakf1600_avx2(state);
+  return state, offset;
+}
+
+/**
+  requires offset + LEN <= ASIZE
+*/
+inline fn pabsorb_blocks_avx2
+( reg u256[7] state
+, reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int RATE8
+, inline int LEN
+) -> reg u256[7] /* state */, reg u64 /* offset */
+{
+  i = 0;
+  while ( offset <= LEN - RATE8 ) {
+    state, offset = pabsorb_block_avx2( state, buf, offset, RATE8);
+  }
+  return state, offset;
+}
+
+inline fn absorb_avx2
+( reg const ptr u8[ASIZE] buf
+, inline int RATE8
+, inline int TRAILBYTE
+) -> reg u256[7]
+{
+  reg u256[7] state;
+  stack u64[25] pst_s;
+  reg ptr u64[25] pst;
+  reg u64 offset, at, last, t;
+  offset = 0;
+  state = state_init_avx2();
+  if (RATE8 <= ASIZE) {
+    state, offset = pabsorb_blocks_avx2( state, buf, offset, RATE8, ASIZE);
+  }
+  pst = pst_s;
+  pst = pabsorb_init_avx2(pst);
+  at = 0;
+  pst, at, offset = pabsorb_avx2( pst, at, buf, offset, (ASIZE % RATE8));
+  last = read_sub_u64( buf, offset, ASIZE % 8);
+  t = TRAILBYTE;
+  t <<= 8*(ASIZE%8);
+  last |= t;
+  pst = pabsorb_finish_avx2( pst, at, last, RATE8);
+  state = pabsorb_addblock_avx2(state, pst);
+  state = keccakf1600_avx2(state);
+  return state;
+}
+
+param int RATE8 = 136;
+
+*/
