@@ -1,5 +1,7 @@
 require "keccak1600_fixedsized_avx2.jinc"
 
+param int BUFLEN = 1741;
+param int OUTLEN = 2329;
 
 
 /*****
@@ -34,7 +36,7 @@ export fn test_addratebit_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7]
   reg u256[7] st;
   inline int i;
   for i = 0 to 7 { st[i] = sta[i]; }
-  st = __addratebit_avx2(st, 136);
+  st = __addratebit_avx2(st, R136);
   for i = 0 to 7 { sta[i] = st[i]; }
   return sta;
 }
@@ -60,9 +62,6 @@ export fn test_addpst_avx2
 }
 */
 
-param int BUFLEN = 1741;
-param int OUTLEN = 2329;
-
 /*
 export fn test_pabsorb_avx2
 ( reg mut ptr u256[7] sta
@@ -76,7 +75,7 @@ export fn test_pabsorb_avx2
   st = __state_init_avx2();
   pst = pst_s;
   pst = __pstate_init_avx2(pst);
-  pst, _, st, _ = __pabsorb_imem_avx2(pst, 0, st, buf, BUFLEN, 136, 0x06);
+  pst, _, st, _ = __pabsorb_imem_avx2(pst, 0, st, buf, BUFLEN, R136, SHA3);
   pst_s = pst;
   for i = 0 to 7 { sta[i] = st[i]; }
   return sta;
@@ -94,7 +93,7 @@ export fn test_absorb_imem_avx2
   st = __state_init_avx2();
   pst = pst_s;
   pst = __pstate_init_avx2(pst);
-  st, _ = __absorb_imem_avx2(st, buf, BUFLEN, 136, 0x06);
+  st, _ = __absorb_imem_avx2(st, buf, BUFLEN, R136, SHA3);
   for i = 0 to 7 { sta[i] = st[i]; }
   return sta;
 }
