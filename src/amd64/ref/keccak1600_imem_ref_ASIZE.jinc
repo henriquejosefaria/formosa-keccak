@@ -1,0 +1,152 @@
+/* DEPENDENCIES:
+param int ASIZE;
+require "keccak1600_ref.jinc"
+*/
+
+require "../common/subreadwrite_array_P.jinc"
+
+
+inline fn __addratebit_ref
+( reg mut ptr u64[25] st
+, inline int RATE8
+) -> reg ptr u64[25]
+{
+  st.[u8 RATE8-1] ^= 0x80;
+  return st;
+}
+
+inline fn __addstate_ilen
+( reg mut ptr u64[25] st
+, inline int AT /* bytes (0 <= AT < 200) */
+, reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+, inline int RATE8
+, inline int TRAILBYTE
+) -> reg ptr u64[25] /* st */
+   , inline int /* AT */
+   , reg u64 /* offset */
+{
+  inline int LO;
+  reg u64 at, t64, trail;
+
+  LO = AT % 8; // leftover bytes
+  at = AT / 8; // state position
+
+  if ( 0 < LO ) { // process first word...
+    if ( LO + LEN < 8) { // ...not enough to fill a word (just update it)
+      t64, offset = __aread_subu64(buf, offset, LEN);
+      t64 <<= 8*LO;
+      if ( TRAILBYTE != 0 ) {
+        trail = TRAILBYTE;
+        trail <<= 8*(LO+LEN);
+        t64 |= trail;
+        st[(int) at] ^= t64;
+        st = __addratebit(st);
+      } else {
+        st[(int) at] ^= t64;
+      }
+      LO = 0;
+      AT = 0;
+      LEN = 0;
+      TRAILBYTE = 0;
+    } else { // process first word
+      if ( 8 <= LEN ) {
+        t64 = buf.[u64 offset];
+        offset += (8-LO);
+      } else {
+        t64, offset = __aread_subu64(buf, offset, 8-LO);
+      }
+      LEN -= 8-LO;
+      t64 <<= 8*LO;
+      st[(int) at] ^= t64;
+      AT += 8-LO;
+      //at += 1;
+    }
+  }
+
+// continue processing remaining bytes
+  at = AT / 8;
+  AT = AT + LEN;
+  while ( at < AT / 8) {
+    t64 = buf.[u64 (int) offset];
+    st[(int) at] ^= t64;
+    at += 1;
+    offset += 8;
+  }
+
+  LO = AT % 8;
+  if ( 0 < LO || TRAILBYTE != 0 ) {
+    if ( 0 < LO ) {
+      t64, offset = __aread_subu64(buf, offset, LO);
+    } else {
+      t64 = 0;
+    }
+    if ( TRAILBYTE != 0 ) {
+      trail = TRAILBYTE;
+      trail <<= 8*LO;
+      t64 |= trail;
+      st[(int) at] ^= t64;
+      st = __addratebit(st);
+    } else {
+      st[(int) at] ^= t64;
+    }
+  }
+
+  return st, AT, offset;
+}
+
+inline fn __pabsorb_array
+( reg mut ptr u64[25] st
+, inline int AT
+, reg const ptr u8[ASIZE] buf
+, reg u64 offset
+, inline int LEN
+, inline int TRAILBYTE /* closes state of !=0 (i.e. adds trailbyte and padding) */
+) -> reg ptr u64[25] /* st */
+   , inline int /* AT */
+   , reg u64 /* offset */
+{
+  reg u64 i;
+  inline int ALL, ITERS;
+
+  ALL = AT + LEN;
+  if ( (AT+LEN) < RATE8 ) { // not enough to fill a block!
+    st, AT, offset = __addstate_ilen(st, AT, buf, offset, LEN, TRAILBYTE);
+  } else { // at least a block is filled
+    if ( AT != 0 ) { // start by filling the first block
+      st, _, offset = __addstate_ilen(st, AT, buf, offset, RATE8-AT, 0);
+      LEN = LEN - (RATE8-AT);
+      () = #spill(buf,offset);
+      st = _keccakf1600_ref1(st);
+      () = #unspill(buf,offset);
+      AT = 0;
+    }
+    // continue by processing full blocks
+    ITERS = LEN / RATE8; // number of full blocks
+    i = 0;
+    while ( i < ITERS ) {
+      st, _, offset = __addstate_ilen(st, 0, buf, offset, RATE8, 0);
+      () = #spill(buf,offset, i);
+      st = _keccakf1600_ref1(st);
+      () = #unspill(buf,offset, i);
+      i += 1;
+    }
+    // last incomplete block
+    LEN = ALL % RATE8;
+    if ( LEN != 0 || TRAILBYTE != 0) {
+      st, AT, offset = __addstate_ilen(st, 0, buf, offset, LEN, TRAILBYTE);
+    }
+  }
+  return st, AT, offset;
+}
+
+/*
+fn _absorb(reg ptr u64[25] st, reg ptr u8[ASIZE] buf) -> reg ptr u64[25] {
+  reg u64 offset;
+  st = __keccak_init_ref1(st);
+  offset = 0;
+  st, _, _ = __pabsorb_array(st, 0, buf, offset, ASIZE, TRAILBYTE);
+  return st;
+}
+*/
