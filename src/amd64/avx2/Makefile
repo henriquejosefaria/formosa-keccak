@@ -17,7 +17,7 @@ test_keccak1600_avx2: test_keccak1600_avx2.c test_imem_avx2.s test_array_avx2.s 
 
 
 clean:
-	rm *.s
+	rm -f *.s
 
 realclean: clean
-	rm $(PROGS)
+	rm -f $(PROGS)

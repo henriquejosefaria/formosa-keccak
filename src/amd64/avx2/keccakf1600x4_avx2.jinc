@@ -1,5 +1,5 @@
 
-require "keccakf1600_generic.jinc"
+require "../spec/keccakf1600_generic.jinc"
 
 u256[24] KECCAK1600_RC_AVX2 =
 { (4u64)[0x0000000000000001, 0x0000000000000001, 0x0000000000000001, 0x0000000000000001],
