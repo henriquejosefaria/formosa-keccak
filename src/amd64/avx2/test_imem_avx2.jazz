@@ -1,4 +1,4 @@
-require "keccak1600_fixedsized_avx2.jinc"
+require "keccak1600_imem_avx2.jinc"
 
 param int BUFLEN = 1741;
 param int OUTLEN = 2329;
@@ -6,7 +6,7 @@ param int OUTLEN = 2329;
 
 /*****
  TESTS
-
+*/
 export fn test_keccakf1600_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7] {
   reg u256[7] st;
   inline int i;
@@ -16,6 +16,7 @@ export fn test_keccakf1600_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7] {
   return sta;
 }
 
+/*
 export fn test_stinit_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7] {
   reg u256[7] st;
   inline int i;
@@ -29,7 +30,7 @@ export fn test_pstinit_avx2(reg mut ptr u64[25] pst) -> reg ptr u64[25] {
   pst = __pstinit_avx2(pst);
   return pst;
 }
-
+*/
 
 export fn test_addratebit_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7]
 {
@@ -41,13 +42,7 @@ export fn test_addratebit_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7]
   return sta;
 }
 
-export fn test(reg u64 buf lo) -> reg u128 {
-  reg u128 x;
-  x = (128u) lo;
-  //x = #VMOVHPD(x,[buf]);
-  return x;
-}
-
+/*
 export fn test_addpst_avx2
 ( reg mut ptr u256[7] sta
 , reg const ptr u64[25] pst
@@ -62,8 +57,7 @@ export fn test_addpst_avx2
 }
 */
 
-/*
-export fn test_pabsorb_avx2
+export fn test_pabsorb_imem_avx2
 ( reg mut ptr u256[7] sta
 , reg u64 buf
 ) -> reg ptr u256[7]
@@ -97,7 +91,7 @@ export fn test_absorb_imem_avx2
   for i = 0 to 7 { sta[i] = st[i]; }
   return sta;
 }
-*/
+
 export fn test_shake_imem_avx2
 ( reg mut ptr u256[7] stm
 , reg u64 outbuf inbuf
@@ -112,16 +106,3 @@ export fn test_shake_imem_avx2
   return stm;
 }
 
-/*
-export fn test_keccakF_avx2
-( reg mut ptr u256[7] sta
-) -> reg ptr u256[7]
-{
-  reg u256[7] st;
-  inline int i;
-  st = __state_init_avx2();
-  st = _keccakf1600_avx2(st);
-  for i = 0 to 7 { sta[i] = st[i]; }
-  return sta;
-}
-*/

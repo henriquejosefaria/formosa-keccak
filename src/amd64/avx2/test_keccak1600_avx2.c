@@ -3,13 +3,18 @@
 #include <assert.h>
 
 #include <stdint.h>
-extern void test_oldabsorb(uint64_t*, uint8_t*);
-extern void test_pabsorb_avx2(uint64_t*, uint8_t*);
+
+extern void test_addratebit_avx2(uint64_t*);
+extern void test_absorb_orig_avx2(uint64_t*, uint8_t*);
+extern void test_pabsorb_imem_avx2(uint64_t*, uint8_t*);
+extern void test_pabsorb_array_avx2(uint64_t*, uint8_t*);
 extern void test_absorb_imem_avx2(uint64_t*, uint8_t*);
-extern void test_keccakF_avx2(uint64_t *);
-extern void test_keccakF(uint64_t *);
+extern void test_absorb_array_avx2(uint64_t*, uint8_t*);
+extern void test_absorb_orig_avx2(uint64_t*, uint8_t*);
+extern void test_keccakf1600_avx2(uint64_t *);
 extern void test_shake_imem_avx2(uint64_t*, uint8_t*, uint8_t*);
-extern void test_oldshake(uint64_t*, uint8_t*, uint8_t*);
+extern void test_shake_array_avx2(uint64_t*, uint8_t*, uint8_t*);
+extern void test_shake_orig_avx2(uint64_t*, uint8_t*, uint8_t*);
 
 
 #define ASIZE 1741
@@ -99,19 +104,22 @@ int st_check(char* str, uint64_t x[], uint64_t y[]) {
 }
 
 int main() {
+  uint64_t s0[28];
   uint64_t s1[28];
   uint64_t s2[28];
   uint8_t t[2*ASIZE];
+  uint8_t o0[2*OSIZE];
   uint8_t o1[2*OSIZE];
   uint8_t o2[2*OSIZE];
   int i;
   for (i=0; i<ASIZE; i++) { t[i]=(uint8_t)i; }
   for (i=ASIZE; i<2*ASIZE; i++) { t[i]=0xFF; }
-  for (i=0; i<2*OSIZE; i++) { o1[i]=0xFF; o2[i]=0xFF; }
+  for (i=0; i<2*OSIZE; i++) { o0[i]=0xFF; o1[i]=0xFF; o2[i]=0xFF; }
 
+//  for (i=0; i<2000000; i++)
+  test_shake_imem_avx2(s1, o1, t);
   test_shake_imem_avx2(s2, o2, t);
-  for (i=0; i<2000000; i++)
-  test_oldshake(s1, o1, t);
+  test_shake_orig_avx2(s0, o0, t);
 
 //  test_pabsorb_avx2(s2, t);
 //  test_absorb_imem_avx2(s2,t);
@@ -120,8 +128,10 @@ int main() {
 //  test_keccakF(s1);
 
 
-  buf_check("BUF", o1, o2);
-  st_check("STATE", s1, s2);
+  buf_check("BUF imem ", o0, o1);
+  st_check("STATE imem ", s0, s1);
+  buf_check("BUF array", o0, o2);
+  st_check("STATE array", s0, s2);
 
   return 0;
 }

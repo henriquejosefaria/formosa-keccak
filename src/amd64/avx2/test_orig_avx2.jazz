@@ -23,7 +23,7 @@ export fn test_oldabsorb
 }
 */
 
-export fn test_oldshake
+export fn test_shake_orig_avx2
 ( reg mut ptr u256[7] stm
 , reg u64 outbuf inbuf
 ) -> reg ptr u256[7]

@@ -301,7 +301,7 @@ param int SHAKE = 0x1F;
 
 param int BUFLEN = 1741;
 param int OUTLEN = 2329;
-
+/*
 export fn test_oldabsorb
 ( reg mut ptr u256[7] sta
 , reg u64 buf
@@ -319,7 +319,7 @@ export fn test_oldabsorb
   for i = 0 to 7 { sta[i] = st[i]; }
   return sta;
 }
-
+*/
 export fn test_oldshake
 ( reg mut ptr u256[7] stm
 , reg u64 outbuf inbuf
@@ -341,7 +341,7 @@ export fn test_oldshake
   for i = 0 to 7 { stm[i] = st[i]; }
   return stm;
 }
-
+/*
 export fn test_keccakF
 ( reg mut ptr u256[7] sta
 ) -> reg ptr u256[7]
@@ -353,3 +353,4 @@ export fn test_keccakF
   for i = 0 to 7 { sta[i] = st[i]; }
   return sta;
 }
+*/
