@@ -20,12 +20,14 @@ inline fn __state_init_avx2x4
 ( reg mut ptr u256[25] st
 ) -> reg ptr u256[25]
 {
-  inline int i;
-  reg u256 t;
-
-  t = #set0_256();
-  for i=0 to 25 { st[i] = t; }
-
+  reg u64 i;
+  reg u256 z256;
+  z256 = #set0_256();
+  i = 0;
+  while (i < 32*25) {
+    st.[u256 (int) i] = z256;
+    i += 32; 
+  }
   return st;
 }
 
@@ -51,10 +53,3 @@ inline fn __addratebit_avx2x4
   return st;
 }
 
-export fn test_addratebit_avx2x4
-( reg mut ptr u256[25] st
-) -> reg ptr u256[25]
-{
-  st = __addratebit_avx2x4(st, R136);
-  return st;
-}

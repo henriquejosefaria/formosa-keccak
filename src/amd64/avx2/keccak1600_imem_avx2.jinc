@@ -17,9 +17,7 @@ inline fn __addstate_imem_avx2
   reg u256 r0, r1, r2, r3, r4, r5, r6;
   reg u128 t128_0, t128_1;
 
-  buf, LEN, TRAILB, t64 = __mread_subu64(buf, LEN, TRAILB);
-  t128_0 = (128u) t64;
-  r0 = #VPBROADCAST_4u64(t128_0);
+  buf, LEN, TRAILB, r0 = __mread_bcast_4subu64(buf, LEN, TRAILB);
   st[0] ^= r0;
 
   buf, LEN, TRAILB, r1 = __mread_subu256(buf, LEN, TRAILB);

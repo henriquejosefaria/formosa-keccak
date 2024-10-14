@@ -170,7 +170,7 @@ fn keccakf1600_4x_round(reg ptr u256[25] e a, reg u256 rc r8 r56) -> reg ptr u25
 
 ////////////////////////////////////////////////////////////////////////////////
 
-inline fn __keccakf1600_4x(reg ptr u256[25] a) -> reg ptr u256[25]
+inline fn __keccakf1600_avx2x4(reg ptr u256[25] a) -> reg ptr u256[25]
 {
   #mmx reg ptr u256[25] a_s;
 
@@ -210,20 +210,21 @@ inline fn __keccakf1600_4x(reg ptr u256[25] a) -> reg ptr u256[25]
   return a;
 }
 
-fn _keccakf1600_4x_(reg ptr u256[25] a) -> reg ptr u256[25]
+fn _keccakf1600_avx2x4(reg ptr u256[25] a) -> reg ptr u256[25]
 {
-  a = __keccakf1600_4x(a);
+  a = __keccakf1600_avx2x4(a);
   return a;
 }
 
-inline fn _keccakf1600_4x(reg ptr u256[25] a) -> reg ptr u256[25]
+inline fn _keccakf1600_avx2x4_(reg ptr u256[25] a) -> reg ptr u256[25]
 {
   a = a;
-  a = _keccakf1600_4x_(a);
+  a = _keccakf1600_avx2x4(a);
   a = a;
   return a;
 }
 
+/*
 // pack 4 keccak states (st25) into a 4-way state (st4x)
 inline fn __u256x4_4u64x4
 ( reg u256 x0 x1 x2 x3
@@ -329,3 +330,4 @@ inline fn __st4x_unpack
 
   return st0, st1, st2, st3;
 }
+*/

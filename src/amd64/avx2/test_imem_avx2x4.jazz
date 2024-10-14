@@ -1,0 +1,91 @@
+require "keccak1600x4_imem_avx2.jinc"
+
+param int BUFLEN = 1741;
+param int OUTLEN = 2329;
+
+
+/*****
+ TESTS
+*/
+export fn test_keccakf1600_avx2x4(reg mut ptr u256[25] st) -> reg ptr u256[25] {
+  st = _keccakf1600_avx2x4(st);
+  return st;
+}
+
+/*
+export fn test_stinit_avx2(reg mut ptr u256[7] sta) -> reg ptr u256[7] {
+  reg u256[7] st;
+  inline int i;
+  for i = 0 to 7 { st[i] = sta[i]; }
+  st = __stinit_avx2();
+  for i = 0 to 7 { sta[i] = st[i]; }
+  return sta;
+}
+
+export fn test_pstinit_avx2(reg mut ptr u64[25] pst) -> reg ptr u64[25] {
+  pst = __pstinit_avx2(pst);
+  return pst;
+}
+*/
+
+export fn test_addratebit_avx2x4(reg mut ptr u256[25] st) -> reg ptr u256[25]
+{
+  st = __addratebit_avx2x4(st, R136);
+  return st;
+}
+
+/*
+export fn test_addpst_avx2
+( reg mut ptr u256[7] sta
+, reg const ptr u64[25] pst
+) -> reg ptr u256[7]
+{
+  reg u256[7] st;
+  inline int i;
+  for i = 0 to 7 { st[i] = sta[i]; }
+  st = _addpstate_avx2(st, pst);
+  for i = 0 to 7 { sta[i] = st[i]; }
+  return sta;
+}
+*/
+
+export fn test_absorb_bcast_imem_avx2x4
+( reg mut ptr u256[25] st
+, reg u64 buf
+) -> reg ptr u256[25]
+{
+  st = __state_init_avx2x4(st);
+  st, _, _ = __absorb_bcast_imem_avx2x4(st, 0, buf, BUFLEN, R136, SHA3);
+  return st;
+}
+
+/*
+export fn test_absorb_imem_avx2
+( reg mut ptr u256[7] sta
+, reg u64 buf
+) -> reg ptr u256[7]
+{
+  reg u256[7] st;
+  stack u64[25] pst_s;
+  reg ptr u64[25] pst;
+  inline int i;
+  st = __state_init_avx2();
+  pst = pst_s;
+  pst = __pstate_init_avx2(pst);
+  st, _ = __absorb_imem_avx2(st, buf, BUFLEN, R136, SHA3);
+  for i = 0 to 7 { sta[i] = st[i]; }
+  return sta;
+}
+*/
+
+export fn test_shake_imem_avx2x4
+( reg mut ptr u256[25] st
+, reg u64 obuf0 obuf1 obuf2 obuf3 inbuf
+) -> reg ptr u256[25]
+{
+  st = __state_init_avx2x4(st);
+  st, _, _ = __absorb_bcast_imem_avx2x4(st, 0, inbuf, BUFLEN, R136, SHAKE);
+  _, _, _, _, st = __squeeze_imem_avx2x4(obuf0, obuf1, obuf2, obuf3, OUTLEN, st, R136);
+  return st;
+}
+

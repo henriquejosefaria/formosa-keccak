@@ -55,6 +55,34 @@ inline fn __mread_subu64
   return buf, LEN, TRAIL, w; 
 }
 
+inline fn __mread_bcast_4subu64
+( reg u64 buf
+, inline int LEN
+, inline int TRAIL
+) -> reg u64 /* buf */
+   , inline int /* LEN */
+   , inline int /* TRAIL */
+   , reg u256 /* w */
+{
+  reg u64 t64;
+  reg u128 t128;
+  reg u256 w;
+  if (LEN <=s 0 && TRAIL==0) {
+    w = #set0_256();
+  } else {
+    if (8 <= LEN) {
+      w = #VPBROADCAST_4u64((u64)[buf]);
+      buf += 8;
+      LEN -= 8;
+    } else {
+      buf, LEN, TRAIL, t64 = __mread_subu64(buf, LEN, TRAIL);
+      t128 = (128u) t64;
+      w = #VPBROADCAST_4u64(t128);
+    }
+  }
+  return buf, LEN, TRAIL, w; 
+}
+
 inline fn __mread_subu128
 ( reg u64 buf
 , inline int LEN
@@ -139,11 +167,13 @@ inline fn __mwrite_subu64
     } else {
       if (4 <=s LEN) {
         (u32)[buf] = (32u) w;
+	w >>= 32;
         buf += 4;
         LEN -= 4;
       }
       if (2 <=s LEN) {
         (u16)[buf] = (16u) w;
+	w >>= 16;
         buf += 2;
         LEN -= 2;
       }
