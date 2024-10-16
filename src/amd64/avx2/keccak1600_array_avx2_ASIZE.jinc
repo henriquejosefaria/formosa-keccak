@@ -126,7 +126,8 @@ inline fn __pstate_array_avx2
     if ( LO+LEN < 8) { // ...not enough to fill a word (just update it)
       if ( TRAILB != 0 ) { ALL += 1; }
       DELTA, _, TRAILB, t64 = __aread_subu64(buf, offset, DELTA, LEN, TRAILB);
-      pst[(int) at] = t64;
+      t64 <<= 8*LO;
+      pst[(int) at] ^= t64;
       LO = 0;
       AT = 0;
       LEN = 0;
@@ -140,16 +141,18 @@ inline fn __pstate_array_avx2
       LEN -= 8-LO;
       AT += 8-LO;
       t64 <<= 8*LO;
-      pst[(int) at] = t64;
+      pst[(int) at] ^= t64;
       at += 1;
     }
   }
 
   // continue processing remaining bytes
   if (32 <= LEN) {
+    offset += DELTA;
+    DELTA = 0;
     while ( at < AT/8+4*(LEN/32)) {
-      t256 = buf.[u256 offset + DELTA];
-      DELTA += 32;
+      t256 = buf.[u256 offset];
+      offset += 32;
       pst.[u256 8*at] = t256;
       at += 4;
     }
@@ -171,7 +174,7 @@ inline fn __pstate_array_avx2
   }
 
   // process last word (possibly closing the state)
-  LO = ALL % 8;
+  LO = (AT+LEN) % 8;
   if ( 0 < LO || TRAILB != 0 ) {
     if ( TRAILB != 0 ) { ALL += 1; }
     DELTA, _, TRAILB, t64 = __aread_subu64(buf, offset, DELTA, LO, TRAILB);

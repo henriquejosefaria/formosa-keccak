@@ -89,7 +89,7 @@ inline fn __absorb_imem_avx2
    ======================================
 */
 
-inline fn __pstate_imem
+inline fn __pstate_imem_avx2
 ( reg mut ptr u64[25] pst
 , inline int AT /* bytes (0 <= AT < 200) */
 , reg u64 buf
@@ -112,7 +112,8 @@ inline fn __pstate_imem
     if ( LO+LEN < 8) { // ...not enough to fill a word (just update it)
       if ( TRAILB != 0 ) { ALL += 1; }
       buf, _, TRAILB, t64 = __mread_subu64(buf, LEN, TRAILB);
-      pst[(int) at] = t64;
+      t64 <<= 8*LO;
+      pst[(int) at] ^= t64;
       LO = 0;
       AT = 0;
       LEN = 0;
@@ -126,7 +127,7 @@ inline fn __pstate_imem
       LEN -= 8-LO;
       AT += 8-LO;
       t64 <<= 8*LO;
-      pst[(int) at] = t64;
+      pst[(int) at] ^= t64;
       at += 1;
     }
   }
@@ -157,8 +158,8 @@ inline fn __pstate_imem
   }
 
   // process last word (possibly closing the state)
-  LO = ALL % 8;
-  if ( 0 < LO || TRAILB != 0 ) {
+  LO = (AT+LEN) % 8;
+  if ( 0 < LEN || TRAILB != 0 ) {
     if ( TRAILB != 0 ) { ALL += 1; }
     buf, _, TRAILB, t64 = __mread_subu64(buf, LO, TRAILB);
     pst[u64 (ALL/8)] = t64;
@@ -185,7 +186,7 @@ inline fn __pabsorb_imem_avx2
 
   ALL = AT + LEN;
   if ( (AT+LEN) < RATE8 ) { // not enough to fill a block!
-    pst, AT, buf = __pstate_imem(pst, AT, buf, LEN, TRAILB);
+    pst, AT, buf = __pstate_imem_avx2(pst, AT, buf, LEN, TRAILB);
     if (TRAILB != 0) { // add pstate and closes the state
       i = AT/8 + 1;
       if (AT <= 5*8) { // only st[0..1] is affected
@@ -200,7 +201,7 @@ inline fn __pabsorb_imem_avx2
     }
   } else { // at least a block is filled
     if ( AT != 0 ) { // start by filling the first block
-      pst, _, buf = __pstate_imem(pst, AT, buf, RATE8-AT, 0);
+      pst, _, buf = __pstate_imem_avx2(pst, AT, buf, RATE8-AT, 0);
       LEN = LEN - (RATE8-AT);
       st = _addpstate_avx2(st, pst);
       st = _keccakf1600_avx2(st);
@@ -212,8 +213,6 @@ inline fn __pabsorb_imem_avx2
     i = 0;
     while ( i < ITERS ) {
       st, buf = __addstate_imem_avx2(st, buf, RATE8, 0);
-      //pst, _, buf = __pstate_imem(pst, 0, buf, RATE8, 0);
-      //st = _addpstate_avx2(st, pst);
       st = _keccakf1600_avx2(st);
       i += 1;
     }
@@ -223,22 +222,9 @@ inline fn __pabsorb_imem_avx2
     if (TRAILB!=0) {
       st, buf = __addstate_imem_avx2(st, buf, LEN, TRAILB);
       st = __addratebit_avx2(st, RATE8);
+      AT = 0;
     } else if ( LEN != 0) {
-      pst, AT, buf = __pstate_imem(pst, 0, buf, LEN, TRAILB);
-/*
-      if (TRAILB != 0) { // add pstate and closes the state
-        i = AT/8 + 1;
-        if (AT <= 5*8) { // only st[0..1] is affected
-          while (i < 5) { pst[i] = 0; i += 1; }
-          st = __addpst01(st, pst);
-          st = __addratebit_avx2(st, RATE8);
-        } else { // all state is affected
-          while (i < RATE8/8) { pst[i] = 0; i += 1; }
-          pst[u8 RATE8-1] ^= 0x80;
-          st = _addpstate_avx2(st, pst);
-        }
-      }
-*/
+      pst, AT, buf = __pstate_imem_avx2(pst, 0, buf, LEN, TRAILB);
     }
   }
   return pst, AT, st, buf;
