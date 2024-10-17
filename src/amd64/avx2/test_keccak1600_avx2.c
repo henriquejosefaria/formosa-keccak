@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include <stdint.h>
-
 #define ILEN1 101
 #define ILEN2 1013
 #define ILEN3 2019

@@ -1,0 +1,222 @@
+require "keccak1600_orig_avx2.jinc"
+require "keccak1600_imem_avx2.jinc"
+require "keccak1600x4_imem_avx2.jinc"
+
+param int ILEN1 = 7;
+param int ILEN2 = 5;
+param int ILEN3 = 13;
+param int OLEN = 13;
+
+
+
+param int ILEN = ILEN1+ILEN2+ILEN3;
+
+/***********
+ IMEM_AVX2x4
+ ***********/
+
+export fn test_keccakf1600_avx2x4(reg mut ptr u256[25] st) -> reg ptr u256[25] {
+  st = _keccakf1600_avx2x4(st);
+  return st;
+}
+
+export fn test_addratebit_avx2x4(reg mut ptr u256[25] st) -> reg ptr u256[25]
+{
+  st = __addratebit_avx2x4(st, R136);
+  return st;
+}
+
+export fn test_absorb_bcast_imem_avx2x4
+( reg mut ptr u256[25] st
+, reg u64 buf
+) -> reg ptr u256[25]
+{
+  st = __state_init_avx2x4(st);
+  st, _, _ = __absorb_bcast_imem_avx2x4(st, 0, buf, ILEN, R136, SHAKE);
+  return st;
+}
+
+export fn test_absorb_imem_avx2x4
+( reg mut ptr u256[25] st
+, reg u64 buf
+) -> reg ptr u256[25], reg u64
+{
+  inline int AT;
+  reg u64 b0 b1 b2 b3;
+  buf=buf; 
+  st = __state_init_avx2x4(st);
+  st, AT, buf = __absorb_bcast_imem_avx2x4(st, 0, buf, ILEN1, R136, UNFINISHED);
+  b0 = buf; b1=b0; b1+=1; b2=b1; b2+=1; b3=b2; b3+=1;
+  st, AT, b0, _, _, _ = __absorb_imem_avx2x4(st, AT, b0, b1, b2, b3, ILEN2, R136, UNFINISHED);
+  st, AT, b0 = __absorb_bcast_imem_avx2x4(st, AT, b0, ILEN3, R136, SHAKE);
+  b0 = AT;
+  return st, b0;
+}
+
+export fn test_shake_bcast_imem_avx2x4
+( reg mut ptr u256[25] st
+, reg u64 obuf0 obuf1 obuf2 obuf3 inbuf
+) -> reg ptr u256[25]
+{ inline int AT;
+  reg u64 b1 b2 b3;
+  inbuf = inbuf;
+//  obuf0=obuf0; obuf1=obuf1; obuf2=obuf2; obuf3=obuf3;
+() = #spill(obuf0, obuf1, obuf2, obuf3);
+  st = __state_init_avx2x4(st);
+  st, AT, inbuf = __absorb_bcast_imem_avx2x4(st, 0, inbuf, ILEN1, R136, UNFINISHED);
+  b1 = inbuf;
+  b1+=1;
+  b2 = b1; b2+=1;
+  b3 = b2; b3+=1;
+  st, AT, inbuf, _, _, _ = __absorb_imem_avx2x4(st, AT, inbuf, b1, b2, b3, ILEN2, R136, UNFINISHED);
+  st, AT, inbuf = __absorb_bcast_imem_avx2x4(st, AT, inbuf, ILEN3, R136, SHAKE);
+() = #unspill(obuf0, obuf1, obuf2, obuf3);
+  _, _, _, _, st = __squeeze_imem_avx2x4(obuf0, obuf1, obuf2, obuf3, OLEN, st, R136);
+  return st;
+}
+
+/************
+ ARRAY_AVX2x4
+ ************/
+
+namespace AI {
+ param int ASIZE = ILEN;
+ require "keccak1600x4_array_avx2_ASIZE.jinc"
+}
+
+namespace AI1 {
+ param int ASIZE = ILEN1;
+ require "keccak1600x4_array_avx2_ASIZE.jinc"
+}
+
+namespace AI2 {
+ param int ASIZE = ILEN2;
+ require "keccak1600x4_array_avx2_ASIZE.jinc"
+}
+
+namespace AI3 {
+ param int ASIZE = ILEN3;
+ require "keccak1600x4_array_avx2_ASIZE.jinc"
+}
+
+namespace AO {
+ param int ASIZE = OLEN;
+ require "keccak1600x4_array_avx2_ASIZE.jinc"
+}
+
+export fn test_absorb_bcast_array_avx2x4
+( reg mut ptr u256[25] st
+, reg const ptr u8[ILEN] buf
+) -> reg ptr u256[25]
+{ reg u64 offset;
+  st = __state_init_avx2x4(st);
+  offset = 0;
+  st, _, _ = AI::__absorb_bcast_array_avx2x4(st, 0, buf, offset, ILEN, R136, SHAKE);
+  return st;
+}
+
+export fn test_absorb_array_avx2x4
+( reg mut ptr u256[25] st
+, reg const ptr u8[ILEN1] buf1
+, reg const ptr u8[ILEN2] buf2
+, reg const ptr u8[ILEN3] buf3
+) -> reg ptr u256[25], reg u64
+{
+  inline int AT;
+  reg u64 offset;
+  buf1=buf1; buf2=buf2; buf3=buf3; 
+  st = __state_init_avx2x4(st);
+  offset = 0;
+  st, AT, _ = AI1::__absorb_bcast_array_avx2x4(st, 0, buf1, offset, ILEN1, R136, UNFINISHED);
+  offset = 0;
+  st, AT, _ = AI2::__absorb_array_avx2x4(st, AT, buf2, buf2, buf2, buf2, offset, ILEN2, R136, UNFINISHED);
+  offset = 0;
+  st, AT, _ = AI3::__absorb_bcast_array_avx2x4(st, AT, buf3, offset, ILEN3, R136, SHAKE);
+  offset = AT;
+  return st, offset;
+}
+
+export fn test_shake_bcast_array_avx2x4
+( reg mut ptr u256[25] st
+, reg mut ptr u8[OLEN] obuf0
+, reg const ptr u8[ILEN1] buf1
+, reg const ptr u8[ILEN2] buf2
+, reg const ptr u8[ILEN3] buf3
+) -> reg ptr u256[25] /* st */
+   , reg ptr u8[OLEN] /* obuf0 */
+{ inline int AT;
+  stack u8[OLEN] obuf1_s obuf2_s obuf3_s;
+  reg ptr u8[OLEN] obuf1 obuf2 obuf3; 
+  reg u64 offset;
+  st = __state_init_avx2x4(st);
+  offset = 0;
+  st, AT, _ = AI1::__absorb_bcast_array_avx2x4(st, 0, buf1, offset, ILEN1, R136, UNFINISHED);
+  offset = 0;
+  st, AT, _ = AI2::__absorb_array_avx2x4(st, AT, buf2, buf2, buf2, buf2, offset, ILEN2, R136, UNFINISHED);
+  offset = 0;
+  st, AT, _ = AI3::__absorb_bcast_array_avx2x4(st, AT, buf3, offset, ILEN3, R136, SHAKE);
+  offset = 0;
+  obuf1 = obuf1_s; obuf2 = obuf2_s; obuf3 = obuf3_s; 
+  obuf0, obuf1, obuf2, obuf3, _, st = AO::__squeeze_array_avx2x4(obuf0, obuf1, obuf2, obuf3, offset, OLEN, st, R136);
+  return st, obuf0;
+}
+
+
+
+/*********
+ ORIG_AVX2
+ *********/
+
+export fn test_dumpstate_avx2
+( reg const ptr u256[7] stm
+, reg u64 outbuf
+)
+{ inline int i;
+  reg u256[7] st;
+  outbuf = outbuf;
+  for i = 0 to 7 { st[i] = stm[i]; }
+  _ = __dumpstate_imem_avx2(outbuf, 200, st);
+}
+
+export fn test_absorb_orig_avx2
+( reg mut ptr u256[25] sta
+, reg u64 buf
+) -> reg ptr u256[25]
+{
+  reg u256[7] st;
+  reg u64 r8, inlen;
+  reg u8 trail;
+  inline int i;
+  buf = buf;
+  st = __state_init_avx2();
+  inlen = ILEN;
+  r8 = 136;
+  trail = SHAKE;
+  st = __absorb_avx2(st, buf, inlen, trail, r8);
+  for i = 0 to 7 { sta[i] = st[i]; }
+  return sta;
+}
+
+export fn test_shake_orig_avx2
+( reg mut ptr u256[7] stm
+, reg u64 outbuf inbuf
+) -> reg ptr u256[7]
+{
+  reg u256[7] st;
+  reg u64 r8, inlen, outlen;
+  reg u8 trail;
+  inline int i;
+  outbuf = outbuf; inbuf = inbuf;
+  st = __state_init_avx2();
+  inlen = ILEN;
+  outlen = OLEN;
+  r8 = R136;
+  trail = SHAKE;
+  // absorb
+  st = __absorb_avx2(st, inbuf, inlen, trail, r8);
+  // squeeze
+  st = __squeeze_avx2(st, outbuf, outlen, r8);
+  for i = 0 to 7 { stm[i] = st[i]; }
+  return stm;
+}
+
